@@ -8,10 +8,26 @@ REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
 echo "=== muse-linux-desktop installer ==="
 echo
 
+YES=0
+for arg in "$@"; do
+  case "$arg" in
+    -y|--yes) YES=1 ;;
+    -h|--help)
+      echo "usage: ./install.sh [-y|--yes]"
+      echo "env: DESKTOP_USER ASSISTANT_USER"
+      exit 0
+      ;;
+  esac
+done
+
 # --- who is the desktop user? ---
-default_user="${SUDO_USER:-$USER}"
-read -rp "Desktop username [$default_user]: " DESKTOP_USER
-DESKTOP_USER="${DESKTOP_USER:-$default_user}"
+default_user="${DESKTOP_USER:-${SUDO_USER:-$USER}}"
+if [[ "$YES" -eq 1 ]] || [[ ! -t 0 ]]; then
+  DESKTOP_USER="$default_user"
+else
+  read -rp "Desktop username [$default_user]: " DESKTOP_USER
+  DESKTOP_USER="${DESKTOP_USER:-$default_user}"
+fi
 
 if ! id "$DESKTOP_USER" >/dev/null 2>&1; then
   echo "error: user '$DESKTOP_USER' does not exist" >&2
@@ -39,11 +55,17 @@ template "$REPO_DIR/bin/muse"               "muse"
 template "$REPO_DIR/bin/muse-morning-open"  "muse-morning-open"
 template "$REPO_DIR/sbin/cosmic-wallpaper"  "cosmic-wallpaper"
 template "$REPO_DIR/sbin/as-desktop"        "as-desktop"
+template "$REPO_DIR/sbin/live-wallpaper"    "live-wallpaper"
+template "$REPO_DIR/sbin/fit-wallpaper-clip" "fit-wallpaper-clip"
 
 # assistant username is chosen at install time too
-default_assistant="candy"
-read -rp "Assistant SSH username [$default_assistant]: " ASSISTANT_USER
-ASSISTANT_USER="${ASSISTANT_USER:-$default_assistant}"
+default_assistant="${ASSISTANT_USER:-candy}"
+if [[ "$YES" -eq 1 ]] || [[ ! -t 0 ]]; then
+  ASSISTANT_USER="$default_assistant"
+else
+  read -rp "Assistant SSH username [$default_assistant]: " ASSISTANT_USER
+  ASSISTANT_USER="${ASSISTANT_USER:-$default_assistant}"
+fi
 sed -e "s/@DESKTOP_USER@/$DESKTOP_USER/g" \
     -e "s/@DESKTOP_UID@/$DESKTOP_UID/g" \
     -e "s/@ASSISTANT_USER@/$ASSISTANT_USER/g" \
@@ -58,17 +80,22 @@ echo "Installed: $DESKTOP_HOME/.local/bin/muse, muse-morning-open"
 
 # --- install system helpers (needs sudo) ---
 sudo install -m 0755 "$stage/cosmic-wallpaper" "$stage/as-desktop" \
-  "$stage/assistant-desktop-access" /usr/local/bin/
+  "$stage/assistant-desktop-access" "$stage/live-wallpaper" \
+  "$stage/fit-wallpaper-clip" /usr/local/bin/
 sudo mkdir -p /usr/local/lib/muse
 sudo install -m 0755 "$stage/apply-wallpaper" /usr/local/lib/muse/
 sudo install -m 0644 "$stage/desktop-env.sh" /usr/local/lib/muse/
-echo "Installed: /usr/local/bin/{cosmic-wallpaper,as-desktop,assistant-desktop-access}"
+echo "Installed: /usr/local/bin/{cosmic-wallpaper,as-desktop,assistant-desktop-access,live-wallpaper,fit-wallpaper-clip}"
 echo "Installed: /usr/local/lib/muse/{apply-wallpaper,desktop-env.sh}"
 
 # --- morning crontab ---
 echo
-read -rp "Add the 10:00 AM auto-open to $DESKTOP_USER's crontab? [Y/n]: " answer
-answer="${answer:-Y}"
+if [[ "$YES" -eq 1 ]] || [[ ! -t 0 ]]; then
+  answer=Y
+else
+  read -rp "Add the 10:00 AM auto-open to $DESKTOP_USER's crontab? [Y/n]: " answer
+  answer="${answer:-Y}"
+fi
 if [[ "$answer" =~ ^[Yy]$ ]]; then
   cron_line="0 10 * * * $DESKTOP_HOME/.local/bin/muse-morning-open"
   if sudo -u "$DESKTOP_USER" crontab -l 2>/dev/null | grep -qF "muse-morning-open"; then

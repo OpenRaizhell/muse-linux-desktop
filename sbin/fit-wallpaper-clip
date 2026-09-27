@@ -1,0 +1,25 @@
+#!/bin/bash
+# Scale a video to 1920x1080. Pink bars fill the unused edges.
+set -euo pipefail
+src=${1:?usage: fit-wallpaper-clip INPUT.mp4 [OUTPUT.mp4]}
+out=${2:-}
+if [[ -z "$out" ]]; then
+  dir=@DESKTOP_HOME@/Pictures/Wallpapers/live/fit
+  mkdir -p "$dir"
+  n=1
+  while [[ -e $(printf '%s/%02d.mp4' "$dir" "$n") ]]; do n=$((n+1)); done
+  out=$(printf '%s/%02d.mp4' "$dir" "$n")
+fi
+mkdir -p "$(dirname -- "$out")"
+ffmpeg -y -hide_banner -loglevel error -i "$src" \
+  -vf "scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:color=0xFF6EB4" \
+  -an -c:v libx264 -preset veryfast -crf 22 -pix_fmt yuv420p -movflags +faststart \
+  "$out"
+echo "$out"
+playlist=@DESKTOP_HOME@/Pictures/Wallpapers/live/playlist.m3u
+mkdir -p "$(dirname -- "$playlist")"
+if [[ -f "$playlist" ]] && grep -qxF "$out" "$playlist"; then
+  :
+else
+  printf '%s\n' "$out" >> "$playlist"
+fi

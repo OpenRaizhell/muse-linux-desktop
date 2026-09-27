@@ -17,14 +17,10 @@ while [[ $# -gt 0 ]]; do
 done
 src=${1:?usage: cosmic-wallpaper IMAGE}
 [[ -f "$src" ]] || { echo "not a file: $src" >&2; exit 1; }
-stage=/tmp/muse-wallpaper
-mkdir -p "$stage"
-tmp=$(mktemp "$stage/img.XXXXXX")
+# Stage in /tmp (1777), not a per-user subdirectory. A candy-owned
+# /tmp/muse-wallpaper directory blocks the desktop user from writing.
+tmp=$(mktemp /tmp/muse-wallpaper.XXXXXX)
+trap 'rm -f -- "$tmp"' EXIT
 cp -f -- "$src" "$tmp"
 chmod 644 "$tmp"
-ext=
-[[ "$src" == *.* ]] && ext=".${src##*.}"
-named="$stage/current${ext}"
-mv -f "$tmp" "$named"
-chmod 644 "$named"
-sudo -u @DESKTOP_USER@ /usr/local/lib/muse/apply-wallpaper "${args[@]}" "$named"
+sudo -u @DESKTOP_USER@ /usr/local/lib/muse/apply-wallpaper "${args[@]}" "$tmp"

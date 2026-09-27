@@ -14,6 +14,8 @@ live desktop session — all from a normal SSH login, no screen-sharing hacks.
 | `bin/muse-morning-open` | Opens the Muse app every morning at 10:00, but stays quiet if it's already open |
 | `sbin/cosmic-wallpaper` | Sets the wallpaper on the real, live screen — works from an SSH session |
 | `sbin/as-desktop` | Runs any command inside your live desktop session (right Wayland/D-Bus env, no guessing) |
+| `sbin/live-wallpaper` | Loops a muted video playlist as the COSMIC wallpaper (mpvpaper; Hanabi is GNOME-only) |
+| `sbin/fit-wallpaper-clip` | Scales a clip to 1920x1080 and pads unused edges with pink |
 | `sbin/assistant-desktop-access` | Grants the assistant user access to the desktop sockets (Wayland, D-Bus, X11) |
 | `lib/muse/apply-wallpaper` | The bit that actually writes COSMIC's wallpaper config |
 | `lib/muse/desktop-env.sh` | Source this to point any shell at the on-screen desktop session |
@@ -29,9 +31,11 @@ live desktop session — all from a normal SSH login, no screen-sharing hacks.
 ## Install
 
 ```bash
-git clone <this-repo>
+git clone https://github.com/OpenRaizhell/muse-linux-desktop.git
 cd muse-linux-desktop
 ./install.sh
+# non-interactive:
+# DESKTOP_USER=m4dc ASSISTANT_USER=candy ./install.sh -y
 ```
 
 The installer asks for your desktop username, then:

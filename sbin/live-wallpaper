@@ -1,0 +1,21 @@
+#!/bin/bash
+# Loop a playlist of videos as the COSMIC wallpaper (mpvpaper).
+# COSMIC's cosmic-bg is held down while this runs so the video stays visible.
+OUTPUT=${1:-HDMI-A-1}
+PLAYLIST=${2:-@DESKTOP_HOME@/Pictures/Wallpapers/live/playlist.m3u}
+export WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-wayland-1}"
+export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/@DESKTOP_UID@}"
+if [[ ! -e "$PLAYLIST" ]]; then
+  echo "error: playlist not found: $PLAYLIST" >&2
+  exit 1
+fi
+if ! command -v mpvpaper >/dev/null; then
+  echo "error: mpvpaper is not installed. See README." >&2
+  exit 1
+fi
+pkill -x mpvpaper >/dev/null 2>&1 || true
+sleep 0.3
+mpvpaper -f -p -o "no-audio --loop-playlist=inf --shuffle" "$OUTPUT" "$PLAYLIST"
+if ! pgrep -f 'live-wallpaper-hold' >/dev/null 2>&1; then
+  setsid bash -c 'exec -a live-wallpaper-hold bash -c "while pgrep -x mpvpaper >/dev/null; do pkill -x cosmic-bg >/dev/null 2>&1; sleep 1; done"' >/dev/null 2>&1 &
+fi
