@@ -1,0 +1,30 @@
+#!/bin/bash
+# Set the wallpaper on the screen. Works from the assistant's SSH session.
+# The image is staged through /tmp first so permission boundaries stay clean.
+set -euo pipefail
+args=()
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -h|--help)
+      echo "usage: cosmic-wallpaper [--theme] [--fit|--zoom|--stretch] IMAGE"
+      exit 0
+      ;;
+    --theme|--fit|--zoom|--stretch) args+=("$1"); shift ;;
+    --) shift; break ;;
+    -*) echo "unknown option: $1" >&2; exit 2 ;;
+    *) break ;;
+  esac
+done
+src=${1:?usage: cosmic-wallpaper IMAGE}
+[[ -f "$src" ]] || { echo "not a file: $src" >&2; exit 1; }
+stage=/tmp/muse-wallpaper
+mkdir -p "$stage"
+tmp=$(mktemp "$stage/img.XXXXXX")
+cp -f -- "$src" "$tmp"
+chmod 644 "$tmp"
+ext=
+[[ "$src" == *.* ]] && ext=".${src##*.}"
+named="$stage/current${ext}"
+mv -f "$tmp" "$named"
+chmod 644 "$named"
+sudo -u @DESKTOP_USER@ /usr/local/lib/muse/apply-wallpaper "${args[@]}" "$named"

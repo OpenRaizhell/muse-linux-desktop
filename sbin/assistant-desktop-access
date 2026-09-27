@@ -1,0 +1,17 @@
+#!/bin/bash
+# Let the assistant user reach the live desktop sockets.
+# Safe to run more than once (e.g. after a reboot, via a startup hook).
+runtime=/run/user/@DESKTOP_UID@
+if [ -d "$runtime" ]; then
+  setfacl -m u:@ASSISTANT_USER@:rx "$runtime"
+  setfacl -m d:u:@ASSISTANT_USER@:rwx "$runtime"
+  for sock in "$runtime"/wayland-* "$runtime/bus" "$runtime/pipewire-0"; do
+    if [ -e "$sock" ]; then
+      setfacl -m u:@ASSISTANT_USER@:rw "$sock"
+    fi
+  done
+fi
+if [ -S /tmp/.X11-unix/X1 ]; then
+  setfacl -m u:@ASSISTANT_USER@:rw /tmp/.X11-unix/X1
+  DISPLAY=:1 XAUTHORITY="${XAUTHORITY:-$HOME/.Xauthority}" xhost +SI:localuser:@ASSISTANT_USER@ >/dev/null 2>&1 || true
+fi

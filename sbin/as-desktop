@@ -1,0 +1,20 @@
+#!/bin/bash
+# Run a command inside the desktop session that is on the screen.
+# Gives the command the Wayland / D-Bus / X11 environment of the live session,
+# so GUI things work from a headless SSH login.
+if [[ $# -eq 0 ]]; then
+  echo "usage: as-desktop COMMAND..." >&2
+  exit 2
+fi
+exec sudo -u @DESKTOP_USER@ env \
+  HOME=@DESKTOP_HOME@ \
+  USER=@DESKTOP_USER@ \
+  LOGNAME=@DESKTOP_USER@ \
+  XDG_RUNTIME_DIR=/run/user/@DESKTOP_UID@ \
+  DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/@DESKTOP_UID@/bus \
+  WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-wayland-1}" \
+  DISPLAY="${DISPLAY:-:1}" \
+  XDG_CURRENT_DESKTOP=COSMIC \
+  XDG_SESSION_TYPE=wayland \
+  PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" \
+  "$@"

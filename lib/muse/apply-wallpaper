@@ -1,0 +1,68 @@
+#!/bin/bash
+# Runs as the desktop user. Copies an image where cosmic-bg can read it
+# and writes the live wallpaper config.
+#
+# NOTE: hand-editing COSMIC's RON config files does not reliably change the
+# live desktop. Writing the config AND letting this run as the desktop user
+# (via cosmic-wallpaper's sudo hop) is what actually takes effect.
+set -euo pipefail
+theme=false
+zoom=Zoom
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --theme) theme=true; shift ;;
+    --fit) zoom=Fit; shift ;;
+    --stretch) zoom=Stretch; shift ;;
+    --zoom) zoom=Zoom; shift ;;
+    --) shift; break ;;
+    -*) echo "unknown option: $1" >&2; exit 2 ;;
+    *) break ;;
+  esac
+done
+src=${1:?usage: apply-wallpaper [--theme] IMAGE}
+[[ -f "$src" ]] || { echo "not a file: $src" >&2; exit 1; }
+dest_dir="$HOME/Pictures/Wallpapers"
+mkdir -p "$dest_dir"
+base=$(basename -- "$src")
+dest="$dest_dir/$base"
+if [[ "$(readlink -f -- "$src")" != "$(readlink -f -- "$dest")" ]]; then
+  cp -f -- "$src" "$dest"
+fi
+chmod 644 "$dest"
+python3 - "$dest" "$theme" "$zoom" << 'PY'
+import pathlib, sys
+img, theme, scaling = sys.argv[1:]
+def ron(s):
+    return '"' + s.replace("\\", "\\\\").replace('"', '\\"') + '"'
+cfg = pathlib.Path.home() / ".config/cosmic/com.system76.CosmicBackground/v1"
+cfg.mkdir(parents=True, exist_ok=True)
+output = "HDMI-A-1"
+outputs = cfg / "outputs"
+if outputs.exists():
+    for line in outputs.read_text(errors="replace").splitlines():
+        stripped = line.strip().rstrip(",")
+        if stripped.startswith("output:"):
+            output = stripped.split(":", 1)[1].strip().strip('"')
+            break
+def entry(name):
+    return (
+        "(\n"
+        f"    output: {ron(name)},\n"
+        f"    source: Path({ron(img)}),\n"
+        f"    filter_by_theme: {'true' if theme == 'true' else 'false'},\n"
+        "    rotation_frequency: 0,\n"
+        "    filter_method: Lanczos,\n"
+        f"    scaling_mode: {scaling},\n"
+        "    sampling_method: Alphanumeric,\n"
+        ")\n"
+    )
+def atomic(path, text):
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(text)
+    tmp.replace(path)
+atomic(cfg / "all", entry("all"))
+atomic(cfg / "outputs", "[\n" + entry(output).rstrip() + ",\n]\n")
+atomic(cfg / "default_background", entry(output))
+atomic(cfg / "same-on-all", "true\n")
+print(img)
+PY

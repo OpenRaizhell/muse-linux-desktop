@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Official Muse client. Meta ships a native app for macOS only; on Linux this
+# opens the same Muse service (muse.ai) in its own window.
+set -euo pipefail
+profile="${HOME}/.var/app/com.google.ChromeDev/data/muse-profile"
+mkdir -p "$profile"
+exec flatpak run --branch=stable --arch=x86_64 --command=/app/bin/chrome \
+  com.google.ChromeDev \
+  --class=Muse \
+  --user-data-dir="$profile" \
+  --no-first-run \
+  --no-default-browser-check \
+  --disable-sync \
+  --app=https://muse.ai \
+  "$@"

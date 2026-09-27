@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Opens the Muse app every morning at 10:00. Called from the desktop user's crontab.
+# Skips launching if the Muse window is already open.
+set -euo pipefail
+
+DESKTOP_USER="@DESKTOP_USER@"
+DESKTOP_UID="@DESKTOP_UID@"
+DESKTOP_HOME="@DESKTOP_HOME@"
+
+export HOME="$DESKTOP_HOME" USER="$DESKTOP_USER" LOGNAME="$DESKTOP_USER"
+export XDG_RUNTIME_DIR=/run/user/$DESKTOP_UID
+export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$DESKTOP_UID/bus
+export WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-wayland-1}"
+export DISPLAY="${DISPLAY:-:1}"
+export XDG_CURRENT_DESKTOP=COSMIC
+export XDG_SESSION_TYPE=wayland
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$DESKTOP_HOME/.local/bin"
+
+# Already open? Then stay quiet.
+if pgrep -f -- "--class=Muse" >/dev/null 2>&1; then
+  exit 0
+fi
+
+"$DESKTOP_HOME/.local/bin/muse" >/dev/null 2>&1 &
+disown || true
